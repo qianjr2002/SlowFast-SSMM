@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from branch import SlowBranch, SSMMFastBranch
 
 class SlowFastSSMM(nn.Module):
@@ -54,19 +55,22 @@ class SlowFastSSMM(nn.Module):
         g = g_s[:, idx, :]
 
         # ---- fast branch ----
-        out_frames = []
-        for i in range(Nf):
-            y = self.fast(fast_frames[:, i], A[:, i], g[:, i])
-            out_frames.append(y)
-
-        out_frames = torch.stack(out_frames, dim=1)
+        B, Nf, L = fast_frames.shape
+        H = self.fast.hidden_dim
+        x_f = fast_frames.reshape(B * Nf, L)
+        A = A.reshape(B * Nf, H)
+        g = g.reshape(B * Nf, H)
+        y = self.fast(x_f, A, g)            # (B*Nf, L)
+        out_frames = y.view(B, Nf, L)
 
         # ---- overlap-add ----
-        out = torch.zeros_like(x)
-        for i in range(Nf):
-            start = i * self.hop_F
-            out[:, start:start+self.L_F] += out_frames[:, i]
-
+        T = (Nf - 1) * self.hop_F + self.L_F
+        out = F.fold(
+            input = out_frames.permute(0, 2, 1),
+            output_size=(1, T),
+            kernel_size=(1, L),
+            stride=(1, self.hop_F)
+        ).squeeze(0).squeeze(0)
         return out
     
 if __name__ == '__main__':
