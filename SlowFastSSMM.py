@@ -64,7 +64,7 @@ class SlowFastSSMM(nn.Module):
         out_frames = y.view(B, Nf, L)
 
         # ---- overlap-add ----
-        T = (Nf - 1) * self.hop_F + self.L_F
+        # T = (Nf - 1) * self.hop_F + self.L_F
         out = F.fold(
             input = out_frames.permute(0, 2, 1),
             output_size=(1, T),
