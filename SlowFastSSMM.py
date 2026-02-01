@@ -70,13 +70,16 @@ class SlowFastSSMM(nn.Module):
             output_size=(1, T),
             kernel_size=(1, L),
             stride=(1, self.hop_F)
-        ).squeeze(0).squeeze(0)
+        ).squeeze(1).squeeze(1)
         return out
     
 if __name__ == '__main__':
     from ptflops import get_model_complexity_info
 
     model1c = SlowFastSSMM(L_F=32, hop_F=16, delta=1, L_S=32, hidden_dim=32)
+    x = torch.randn(4, 16000)
+    y = model1c(x)
+    print(y.shape)
     macs, params = get_model_complexity_info(
         model1c, (16000,), as_strings=True, print_per_layer_stat=False)
     print(f"1c model MACs: {macs}, Params: {params}")
